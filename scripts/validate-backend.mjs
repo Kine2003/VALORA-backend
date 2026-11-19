@@ -10,6 +10,7 @@ const requiredFiles = [
   "middleware/json.js",
   "middleware/version-api.js",
   "datos/postgres.js",
+  "migrar.js",
   "sql/esquema-postgres.sql",
   "sql/vistas-postgres.sql",
   "package.json",

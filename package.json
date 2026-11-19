@@ -6,6 +6,7 @@
   "description": "Válora, aplicación cliente-servidor con PostgreSQL.",
   "scripts": {
     "start": "node --env-file-if-exists=.env servidor.js",
+    "db:migrate": "node --env-file-if-exists=.env migrar.js",
     "db:seed": "node --env-file-if-exists=.env sembrar.js",
     "validate": "node scripts/validate-backend.mjs",
     "test:api": "node scripts/smoke-api.mjs"

@@ -4,7 +4,7 @@ API Node.js de Válora con PostgreSQL para publicar como **Web Service** en Rend
 
 En Render usa:
 
-- **Build Command:** `npm ci`
+- **Build Command:** `npm ci && npm run db:migrate && npm run db:seed`
 - **Start Command:** `npm start`
 
 En Render crea una base PostgreSQL y configura `DATABASE_URL` con la URL interna de la base, además de `FRONTEND_ORIGIN`. Ejecuta en la base los archivos [sql/esquema-postgres.sql](sql/esquema-postgres.sql) y [sql/vistas-postgres.sql](sql/vistas-postgres.sql), y después `npm run db:seed` usando la misma `DATABASE_URL`.

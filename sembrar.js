@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { configuracionPostgres, transaccion } from "./datos/postgres.js";
 import { TIPOS_COMIDA, validarProductos } from "./lib/cart.js";
-import { validarCatalogo } from "./lib/catalogo.js";
+import { validarCatalogo } from "./lib/validar-catalogo.js";
 
 async function leerCatalogo(archivo) {
   return JSON.parse(await readFile(new URL("./data/" + archivo, import.meta.url), "utf8"));

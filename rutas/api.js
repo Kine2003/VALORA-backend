@@ -5,7 +5,7 @@ import { recibirCotizacion, recibirPedido } from "../controladores/solicitudes.j
 const rutas = new Map([
   ["/salud", { metodo: "GET", estado: 200, ejecutar: async api => {
     await api.salud();
-    return { mysql: "conectado" };
+    return { postgres: "conectado" };
   } }],
   ["/productos", { metodo: "GET", estado: 200, ejecutar: api => api.productos() }],
   ["/servicios", { metodo: "GET", estado: 200, ejecutar: api => api.servicios() }],

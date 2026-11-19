@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
-import { comprobarConexion, conectar } from "./datos/mysql.js";
+import { comprobarConexion, conectar } from "./datos/postgres.js";
 import { productos, servicios } from "./modelos/catalogo.js";
 import { cotizar, guardarPedido } from "./servicios/solicitudes.js";
 import { SolicitudInvalida } from "./modelos/solicitud-invalida.js";
@@ -48,7 +48,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     });
     servidor.listen(puerto, "0.0.0.0", () => console.log("API de Válora en el puerto " + puerto));
   } catch (error) {
-    console.error("No se pudo conectar a MySQL:", error.code || error.name);
+    console.error("No se pudo conectar a PostgreSQL:", error.code || error.name);
     await pool.end();
     process.exitCode = 1;
   }

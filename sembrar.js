@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import mysql from "mysql2/promise";
-import { configuracionMySQL, transaccion } from "./datos/mysql.js";
+import pg from "pg";
+import { configuracionPostgres, transaccion } from "./datos/postgres.js";
 import { TIPOS_COMIDA, validarProductos } from "./lib/cart.js";
 import { validarCatalogo } from "./lib/catalogo.js";
 
@@ -10,22 +10,18 @@ async function leerCatalogo(archivo) {
 
 async function insertar(db, tabla, fila) {
   const columnas = Object.keys(fila);
-  await db.execute(
+  const parametros = columnas.map((_, indice) => `$${indice + 1}`);
+  await db.query(
     "INSERT INTO " + tabla + " (" + columnas.join(", ") + ") VALUES (" +
-      columnas.map(() => "?").join(", ") + ") ON DUPLICATE KEY UPDATE " +
-      columnas[0] + " = " + columnas[0],
+      parametros.join(", ") + ") ON CONFLICT DO NOTHING",
     Object.values(fila),
   );
 }
 
 const catalogoServicios = validarCatalogo(await leerCatalogo("servicios.json"));
 const catalogoProductos = validarProductos(await leerCatalogo("productos.json"));
-if (!process.env.DB_ADMIN_PASSWORD) throw new Error("Define DB_ADMIN_PASSWORD para cargar el catálogo.");
-const pool = mysql.createPool({
-  ...configuracionMySQL,
-  user: process.env.DB_ADMIN_USER || "root",
-  password: process.env.DB_ADMIN_PASSWORD,
-});
+const { Pool } = pg;
+const pool = new Pool(configuracionPostgres);
 try {
   await transaccion(pool, async db => {
     for (const [codigo, nombre] of Object.entries(TIPOS_COMIDA)) {
@@ -34,7 +30,7 @@ try {
     for (const [codigo, nombre] of [["ADMINISTRADOR", "Administrador"], ["CLIENTE", "Cliente"]]) {
       await insertar(db, "rol", { codigo, nombre });
     }
-    const [comidas] = await db.query("SELECT codigo, id_tipo_comida FROM tipo_comida");
+    const { rows: comidas } = await db.query("SELECT codigo, id_tipo_comida FROM tipo_comida");
     const idComida = new Map(comidas.map(fila => [fila.codigo, fila.id_tipo_comida]));
     for (const [id_servicio, { incluye, ...servicio }] of Object.entries(catalogoServicios)) {
       await insertar(db, "servicio", { id_servicio, ...servicio });
@@ -68,7 +64,7 @@ try {
       }
     }
   });
-  console.log("Catálogo de Válora cargado en MySQL.");
+  console.log("Catálogo de Válora cargado en PostgreSQL.");
 } finally {
   await pool.end();
 }

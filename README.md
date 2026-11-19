@@ -1,13 +1,15 @@
 # Válora backend
 
-API Node.js de Válora para publicar como **Web Service** en Render.
+API Node.js de Válora con PostgreSQL para publicar como **Web Service** en Render.
 
 En Render usa:
 
 - **Build Command:** `npm ci`
 - **Start Command:** `npm start`
 
-Configura `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `FRONTEND_ORIGIN` como variables de entorno. La base de datos debe ser MySQL compatible y tener ejecutados `sql/esquema.sql`, `sql/vistas.sql` y `sql/permisos.sql`.
+En Render crea una base PostgreSQL y configura `DATABASE_URL` con la URL interna de la base, además de `FRONTEND_ORIGIN`. Ejecuta en la base los archivos [sql/esquema-postgres.sql](sql/esquema-postgres.sql) y [sql/vistas-postgres.sql](sql/vistas-postgres.sql), y después `npm run db:seed` usando la misma `DATABASE_URL`.
+
+Para una instalación local administrada con pgAdmin, copia [.env.example](.env.example), completa `DATABASE_URL` y ejecuta esos mismos scripts SQL desde pgAdmin.
 
 ## CI/CD
 

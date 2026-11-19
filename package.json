@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "private": true,
   "type": "module",
-  "description": "Válora, aplicación cliente-servidor con MySQL.",
+  "description": "Válora, aplicación cliente-servidor con PostgreSQL.",
   "scripts": {
     "start": "node --env-file-if-exists=.env servidor.js",
     "db:seed": "node --env-file-if-exists=.env sembrar.js",
@@ -17,6 +17,6 @@
     "jsdom": "30.1.3"
   },
   "dependencies": {
-    "mysql2": "^3.24.6"
+    "pg": "^8.16.3"
   }
 }

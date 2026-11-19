@@ -1,5 +1,5 @@
 import { calcularLinea, calcularTotales, crearResumenPedido } from "../lib/cart.js";
-import { transaccion } from "../datos/mysql.js";
+import { transaccion } from "../datos/postgres.js";
 import { productos } from "../modelos/catalogo.js";
 import { SolicitudInvalida } from "../modelos/solicitud-invalida.js";
 import { existeServicio, buscarTipoComida, crearCliente, insertarCotizacion, insertarPedido } from "../repositorios/solicitudes.js";

@@ -30,7 +30,7 @@ async function solicitar(ruta, opciones) {
 try {
   let resultado = await solicitar("/api/v1/salud");
   assert.equal(resultado.respuesta.status, 200);
-  assert.deepEqual(resultado.cuerpo, { mysql: "conectado" });
+  assert.deepEqual(resultado.cuerpo, { postgres: "conectado" });
 
   resultado = await solicitar("/api/v1/productos");
   assert.equal(resultado.respuesta.status, 200);

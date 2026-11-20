@@ -2,7 +2,17 @@ import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { configuracionPostgres, transaccion } from "./datos/postgres.js";
 import { TIPOS_COMIDA, validarProductos } from "./lib/cart.js";
+import { hashearClave } from "./lib/passwords.js";
 import { validarCatalogo } from "./lib/validar-catalogo.js";
+
+const CORREO_ADMIN = (process.env.ADMIN_CORREO || "").trim().toLowerCase();
+const CLAVE_ADMIN = process.env.ADMIN_PASSWORD || "";
+if (!CORREO_ADMIN || CORREO_ADMIN.length > 254 || !/^[a-z0-9][a-z0-9._-]*$/iu.test(CORREO_ADMIN)) {
+  throw new Error("Configure ADMIN_CORREO con un usuario o correo válido antes de ejecutar db:seed.");
+}
+if (CLAVE_ADMIN.length < 8 || CLAVE_ADMIN.length > 128) {
+  throw new Error("Configure ADMIN_PASSWORD con entre 8 y 128 caracteres antes de ejecutar db:seed.");
+}
 
 async function leerCatalogo(archivo) {
   return JSON.parse(await readFile(new URL("./data/" + archivo, import.meta.url), "utf8"));
@@ -29,6 +39,26 @@ try {
     }
     for (const [codigo, nombre] of [["ADMINISTRADOR", "Administrador"], ["CLIENTE", "Cliente"]]) {
       await insertar(db, "rol", { codigo, nombre });
+    }
+    // Cuenta de administrador del panel. La contraseña se guarda cifrada.
+    const { rows: roles } = await db.query("SELECT codigo, id_rol FROM rol");
+    await insertar(db, "usuario", {
+      nombre: "Administrador Válora",
+      correo: CORREO_ADMIN,
+      password_hash: await hashearClave(CLAVE_ADMIN),
+      activo: 1,
+      correo_verificado: 1,
+    });
+    const { rows: [administrador] } = await db.query(
+      "SELECT id_usuario FROM usuario WHERE correo = $1",
+      [CORREO_ADMIN],
+    );
+    const rolAdministrador = roles.find(rol => rol.codigo === "ADMINISTRADOR");
+    if (administrador && rolAdministrador) {
+      await insertar(db, "usuario_rol", {
+        id_usuario: administrador.id_usuario,
+        id_rol: rolAdministrador.id_rol,
+      });
     }
     const { rows: comidas } = await db.query("SELECT codigo, id_tipo_comida FROM tipo_comida");
     const idComida = new Map(comidas.map(fila => [fila.codigo, fila.id_tipo_comida]));

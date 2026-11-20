@@ -12,8 +12,9 @@ export async function leerJson(peticion) {
   const partes = [];
   let bytes = 0;
   for await (const parte of peticion) {
-    bytes += parte.length;
-    if (bytes <= 64_000) partes.push(parte);
+    bytes += Buffer.byteLength(parte);
+    if (bytes > 64_000) throw new SolicitudInvalida("La solicitud supera el tamaño permitido.");
+    partes.push(Buffer.isBuffer(parte) ? parte : Buffer.from(parte));
   }
   if (bytes > 64_000) throw new SolicitudInvalida("La solicitud supera el tamaño permitido.");
   try {

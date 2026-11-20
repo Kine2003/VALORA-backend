@@ -10,6 +10,25 @@ try {
   if (!rows[0].tabla) {
     const esquema = await readFile(new URL("./sql/esquema-postgres.sql", import.meta.url), "utf8");
     await conexion.query(esquema);
+  } else {
+    await conexion.query(`
+      ALTER TABLE paquete ADD COLUMN IF NOT EXISTS mostrar_inicio SMALLINT NOT NULL DEFAULT 1;
+      ALTER TABLE paquete ADD COLUMN IF NOT EXISTS orden_inicio INTEGER NOT NULL DEFAULT 100;
+      ALTER TABLE paquete ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);
+      ALTER TABLE solicitud ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE_PAGO';
+      ALTER TABLE solicitud ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(20);
+      ALTER TABLE solicitud ADD COLUMN IF NOT EXISTS pagado_en TIMESTAMP(6);
+      ALTER TABLE solicitud ADD COLUMN IF NOT EXISTS referencia_pago VARCHAR(100);
+      DO $$ BEGIN
+        ALTER TABLE solicitud ADD CONSTRAINT ck_solicitud_estado_pago
+          CHECK (estado_pago IN ('PENDIENTE_PAGO','PAGO_EN_REVISION','PAGADO'));
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+      DO $$ BEGIN
+        ALTER TABLE paquete ADD CONSTRAINT ck_paquete_mostrar_inicio CHECK (mostrar_inicio IN (0,1));
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
   }
   const vistas = await readFile(new URL("./sql/vistas-postgres.sql", import.meta.url), "utf8");
   await conexion.query(vistas);

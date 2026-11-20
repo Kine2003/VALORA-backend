@@ -1,4 +1,4 @@
-import { consultarServicios, consultarProductos } from "../repositorios/catalogo.js";
+import { consultarServicios, consultarProductos, listarCatalogoAdmin } from "../repositorios/catalogo.js";
 
 export async function servicios(db) {
   const { filas, incluidos } = await consultarServicios(db);
@@ -35,5 +35,31 @@ export async function productos(db) {
         };
       }).filter(oferta => oferta.menus.length > 0),
     })).filter(paquete => paquete.ofertas.length > 0),
+  };
+}
+
+export async function catalogoAdmin(db) {
+  const { paquetes, ofertas } = await listarCatalogoAdmin(db);
+  return {
+    productos: paquetes.map(paquete => ({
+      id: paquete.id,
+      servicioId: paquete.servicioId,
+      nombre: paquete.nombre,
+      descripcion: paquete.descripcion,
+      imagen: paquete.imagen,
+      imagenAlt: paquete.imagenAlt,
+      etiqueta: paquete.etiqueta,
+      activo: Boolean(paquete.activo),
+      mostrarInicio: Boolean(paquete.mostrarInicio),
+      ordenInicio: Number(paquete.ordenInicio),
+      ofertas: ofertas
+        .filter(oferta => oferta.id_paquete === paquete.id)
+        .map(oferta => ({
+          tipoComida: oferta.tipoComida,
+          precioCentavos: Number(oferta.precio_base_centavos),
+          minPersonas: Number(oferta.min_personas),
+          maxPersonas: Number(oferta.max_personas),
+        })),
+    })),
   };
 }

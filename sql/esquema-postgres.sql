@@ -85,8 +85,13 @@ CREATE TABLE paquete (
   imagen_alt VARCHAR(240) NOT NULL,
   etiqueta VARCHAR(80) NOT NULL,
   activo SMALLINT NOT NULL DEFAULT 1,
+  mostrar_inicio SMALLINT NOT NULL DEFAULT 1,
+  orden_inicio INTEGER NOT NULL DEFAULT 100,
+  actualizado_en TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id_paquete),
-  CONSTRAINT ck_paquete_1 CHECK (activo IN (0,1))
+  CONSTRAINT ck_paquete_1 CHECK (activo IN (0,1)),
+  CONSTRAINT ck_paquete_2 CHECK (mostrar_inicio IN (0,1)),
+  CONSTRAINT ck_paquete_3 CHECK (orden_inicio >= 0)
 );
 
 CREATE TABLE servicio_incluye (
@@ -190,6 +195,10 @@ CREATE TABLE solicitud (
   mensaje TEXT NULL,
   id_servicio_contratado BIGINT NULL,
   costo_entrega_centavos DECIMAL(14,0) NOT NULL DEFAULT 0,
+  estado_pago VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE_PAGO',
+  metodo_pago VARCHAR(20) NULL,
+  pagado_en TIMESTAMP(6) NULL,
+  referencia_pago VARCHAR(100) NULL,
   creado_en TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   inventario_descontado_en TIMESTAMP(6) NULL,
   PRIMARY KEY (id_solicitud),
@@ -203,7 +212,8 @@ CREATE TABLE solicitud (
       OR (tipo = 'PEDIDO' AND id_servicio IS NULL AND id_tipo_comida IS NULL AND personas IS NULL
           AND fecha_evento IS NOT NULL AND hora_evento IS NOT NULL AND entrega IS NOT NULL)),
   CONSTRAINT ck_solicitud_7 CHECK (hora_evento ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
-  CONSTRAINT ck_solicitud_8 CHECK (costo_entrega_centavos >= 0)
+  CONSTRAINT ck_solicitud_8 CHECK (costo_entrega_centavos >= 0),
+  CONSTRAINT ck_solicitud_9 CHECK (estado_pago IN ('PENDIENTE_PAGO','PAGO_EN_REVISION','PAGADO'))
 );
 
 CREATE TABLE servicio_contratado (

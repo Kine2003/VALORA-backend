@@ -1,7 +1,18 @@
-export async function crearCliente(db, { nombre, empresa, correo, telefono }) {
+export async function crearCliente(db, { nombre, empresa, correo, telefono }, idUsuario = null) {
+  const correoNormalizado = correo.toLowerCase();
+  if (idUsuario) {
+    const { rows } = await db.query("SELECT id_cliente FROM cliente WHERE id_usuario = $1", [idUsuario]);
+    if (rows[0]) {
+      await db.query(
+        "UPDATE cliente SET nombre = $2, empresa = COALESCE($3, empresa), correo = $4, telefono = $5 WHERE id_cliente = $1",
+        [rows[0].id_cliente, nombre, empresa || null, correoNormalizado, telefono],
+      );
+      return rows[0].id_cliente;
+    }
+  }
   const { rows } = await db.query(
-    "INSERT INTO cliente (nombre, empresa, correo, telefono) VALUES ($1, $2, $3, $4) RETURNING id_cliente",
-    [nombre, empresa || null, correo.toLowerCase(), telefono],
+    "INSERT INTO cliente (id_usuario, nombre, empresa, correo, telefono) VALUES ($1, $2, $3, $4, $5) RETURNING id_cliente",
+    [idUsuario, nombre, empresa || null, correoNormalizado, telefono],
   );
   return rows[0].id_cliente;
 }

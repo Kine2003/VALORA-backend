@@ -42,11 +42,11 @@ function validarPedido(datos) {
   return { contacto, lineas };
 }
 
-export function recibirCotizacion(api, datos) {
-  return api.cotizar(validarCotizacion(datos));
+export function recibirCotizacion(api, datos, _peticion, usuario) {
+  return api.cotizar(validarCotizacion(datos), usuario?.id ?? null);
 }
 
-export function recibirPedido(api, datos) {
+export function recibirPedido(api, datos, _peticion, usuario) {
   const { contacto, lineas } = validarPedido(datos);
-  return api.guardarPedido(contacto, lineas);
+  return api.guardarPedido(contacto, lineas, usuario?.id ?? null);
 }

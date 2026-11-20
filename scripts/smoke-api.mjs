@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { crearServidor } from "../servidor.js";
+import { SolicitudInvalida } from "../modelos/solicitud-invalida.js";
 
 let cotizacionRecibida = false;
 let pedidoRecibido = false;
+let estadoRecibido = null;
 process.env.FRONTEND_ORIGIN = "https://kine2003.github.io/VALORA-frontend/";
+const administrador = { id: "1", nombre: "Administrador", correo: "admin.valora.1", roles: ["ADMINISTRADOR"] };
 const servidor = crearServidor({
   salud: async () => {},
   productos: async () => ({ version: 2, productos: [] }),
@@ -16,6 +19,22 @@ const servidor = crearServidor({
   guardarPedido: async () => {
     pedidoRecibido = true;
     return { id: 202, resumen: "Prueba" };
+  },
+  iniciarSesion: async datos => {
+    if (datos?.correo === "admin.valora.1" && datos?.password === "lticPUCE24") {
+      return { token: "token-admin", usuario: administrador };
+    }
+    throw new SolicitudInvalida("El usuario o la contraseña no son correctos.");
+  },
+  obtenerSesion: async token => token === "token-admin" ? administrador : null,
+  cerrarSesion: async () => ({ cerrada: true }),
+  resumenAdmin: async () => ({ solicitudes: 0, recientes: [] }),
+  solicitudesAdmin: async () => ({ solicitudes: [] }),
+  clientesAdmin: async () => ({ clientes: [] }),
+  solicitudesCuenta: async () => ({ solicitudes: [] }),
+  actualizarEstado: async (id, estado) => {
+    estadoRecibido = { id, estado };
+    return { id, estado };
   },
 });
 servidor.listen(0, "127.0.0.1");
@@ -79,6 +98,56 @@ try {
   });
   assert.equal(resultado.respuesta.status, 201);
   assert.equal(pedidoRecibido, true);
+
+  resultado = await solicitar("/api/v1/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ correo: "admin.valora.1", password: "lticPUCE24" }),
+  });
+  assert.equal(resultado.respuesta.status, 200);
+  assert.equal(resultado.cuerpo.token, "token-admin");
+  assert.deepEqual(resultado.cuerpo.usuario.roles, ["ADMINISTRADOR"]);
+
+  resultado = await solicitar("/api/v1/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ correo: "admin.valora.1", password: "incorrecta" }),
+  });
+  assert.equal(resultado.respuesta.status, 400);
+
+  resultado = await solicitar("/api/v1/admin/resumen");
+  assert.equal(resultado.respuesta.status, 401);
+
+  resultado = await solicitar("/api/v1/admin/resumen", {
+    headers: { Authorization: "Bearer token-admin" },
+  });
+  assert.equal(resultado.respuesta.status, 200);
+
+  resultado = await solicitar("/api/v1/cuenta/solicitudes", {
+    headers: { Authorization: "Bearer token-admin" },
+  });
+  assert.equal(resultado.respuesta.status, 200);
+
+  resultado = await solicitar("/api/v1/admin/solicitudes/9", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer token-admin" },
+    body: JSON.stringify({ estado: "CONFIRMADA" }),
+  });
+  assert.equal(resultado.respuesta.status, 200);
+  assert.deepEqual(estadoRecibido, { id: "9", estado: "CONFIRMADA" });
+
+  resultado = await solicitar("/api/v1/admin/solicitudes/9", {
+    headers: { Authorization: "Bearer token-admin" },
+  });
+  assert.equal(resultado.respuesta.status, 405);
+
+  resultado = await solicitar("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer token-admin" },
+    body: "{}",
+  });
+  assert.equal(resultado.respuesta.status, 200);
+  assert.deepEqual(resultado.cuerpo, { cerrada: true });
 } finally {
   servidor.close();
 }

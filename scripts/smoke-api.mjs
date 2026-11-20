@@ -4,6 +4,7 @@ import { crearServidor } from "../servidor.js";
 
 let cotizacionRecibida = false;
 let pedidoRecibido = false;
+process.env.FRONTEND_ORIGIN = "https://kine2003.github.io/VALORA-frontend/";
 const servidor = crearServidor({
   salud: async () => {},
   productos: async () => ({ version: 2, productos: [] }),
@@ -30,6 +31,7 @@ async function solicitar(ruta, opciones) {
 try {
   let resultado = await solicitar("/api/v1/salud");
   assert.equal(resultado.respuesta.status, 200);
+  assert.equal(resultado.respuesta.headers.get("access-control-allow-origin"), "https://kine2003.github.io");
   assert.deepEqual(resultado.cuerpo, { postgres: "conectado" });
 
   resultado = await solicitar("/api/v1/productos");

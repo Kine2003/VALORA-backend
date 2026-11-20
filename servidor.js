@@ -11,7 +11,8 @@ export function crearServidor(serviciosApi) {
   return createServer(async (peticion, respuesta) => {
     respuesta.setHeader("X-Content-Type-Options", "nosniff");
     try {
-      const origen = process.env.FRONTEND_ORIGIN || "*";
+      const configurado = process.env.FRONTEND_ORIGIN?.trim();
+      const origen = configurado && configurado !== "*" ? new URL(configurado).origin : "*";
       respuesta.setHeader("Access-Control-Allow-Origin", origen);
       respuesta.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       respuesta.setHeader("Access-Control-Allow-Headers", "Content-Type");

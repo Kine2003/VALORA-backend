@@ -13,6 +13,9 @@ const requiredFiles = [
   "migrar.js",
   "sql/esquema-postgres.sql",
   "sql/vistas-postgres.sql",
+  "sql/actualizacion-auth.sql",
+  "sql/actualizacion-gestion.sql",
+  "sql/actualizacion-operacion.sql",
   "package.json",
   "package-lock.json",
   "data/productos.json",
@@ -26,7 +29,7 @@ async function archivosJavaScript(directorio) {
     if (entrada.name === "node_modules" || entrada.name.startsWith(".")) continue;
     const ruta = join(directorio, entrada.name);
     if (entrada.isDirectory()) archivos.push(...await archivosJavaScript(ruta));
-    else if (entrada.isFile() && ruta.endsWith(".js")) archivos.push(ruta);
+    else if (entrada.isFile() && /\.m?js$/.test(ruta)) archivos.push(ruta);
   }
   return archivos;
 }

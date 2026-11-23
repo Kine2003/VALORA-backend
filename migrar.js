@@ -1,11 +1,16 @@
 import { readFile } from "node:fs/promises";
 import pg from "pg";
-import { configuracionPostgres } from "./datos/postgres.js";
+import { configuracionPostgres,configuracionDesdeUrl } from "./datos/postgres.js";
 
 const { Pool } = pg;
-const pool = new Pool(configuracionPostgres);
+const configMigracion=process.env.MIGRATION_DATABASE_URL
+  ? configuracionDesdeUrl(process.env.MIGRATION_DATABASE_URL)
+  : {...configuracionPostgres,...(process.env.MIGRATION_DB_USER?{user:process.env.MIGRATION_DB_USER,password:process.env.MIGRATION_DB_PASSWORD}:{})};
+const pool = new Pool(configMigracion);
 const conexion = await pool.connect();
 try {
+  await conexion.query('BEGIN');
+  await conexion.query('SELECT pg_advisory_xact_lock(8911023)');
   const { rows } = await conexion.query("SELECT to_regclass('public.servicio') AS tabla");
   if (!rows[0].tabla) {
     const esquema = await readFile(new URL("./sql/esquema-postgres.sql", import.meta.url), "utf8");
@@ -32,7 +37,14 @@ try {
   }
   const vistas = await readFile(new URL("./sql/vistas-postgres.sql", import.meta.url), "utf8");
   await conexion.query(vistas);
+  for (const archivo of ['actualizacion-gestion.sql', 'actualizacion-auth.sql', 'actualizacion-operacion.sql']) {
+    await conexion.query(await readFile(new URL('./sql/' + archivo, import.meta.url), 'utf8'));
+  }
+  await conexion.query('COMMIT');
   console.log("Esquema y vistas de PostgreSQL disponibles.");
+} catch (error) {
+  await conexion.query('ROLLBACK');
+  throw error;
 } finally {
   conexion.release();
   await pool.end();

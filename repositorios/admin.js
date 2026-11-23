@@ -32,7 +32,9 @@ function mapearSolicitud(fila) {
     id: String(fila.id_solicitud),
     tipo: fila.tipo,
     estado: fila.estado,
-    fechaEvento: fila.fecha_evento ? String(fila.fecha_evento).slice(0, 10) : null,
+    fechaEvento: fila.fecha_evento instanceof Date
+      ? [fila.fecha_evento.getFullYear(),String(fila.fecha_evento.getMonth()+1).padStart(2,'0'),String(fila.fecha_evento.getDate()).padStart(2,'0')].join('-')
+      : fila.fecha_evento ? String(fila.fecha_evento).slice(0,10) : null,
     horaEvento: fila.hora_evento ?? null,
     personas: fila.personas === null ? null : Number(fila.personas),
     entrega: fila.entrega,
@@ -191,7 +193,10 @@ export async function solicitudesDeCliente(db, { idUsuario, correo }) {
      LIMIT 50`,
     [idUsuario ?? null],
   );
-  return rows.map(mapearSolicitud);
+  const solicitudes=rows.map(mapearSolicitud);
+  const lineas=await lineasDeSolicitudes(db,solicitudes.map(s=>s.id));
+  for(const solicitud of solicitudes)solicitud.lineas=lineas.get(solicitud.id)??[];
+  return solicitudes;
 }
 
 export async function cambiarEstadoSolicitud(db, id, estado, idUsuario) {
@@ -210,7 +215,7 @@ export async function pagarSolicitudCliente(db, id, idUsuario, correo, metodo) {
     consulta = `UPDATE solicitud s SET estado_pago=$1, metodo_pago=$2
       FROM cliente c
       WHERE s.id_solicitud=$3 AND s.tipo='PEDIDO' AND s.id_cliente=c.id_cliente
-        AND c.id_usuario=$4
+        AND c.id_usuario=$4 AND s.estado NOT IN ('CANCELADA','RECHAZADA','ENTREGADA') AND s.estado_pago<>'PAGADO'
       RETURNING s.id_solicitud, s.estado, s.estado_pago, s.metodo_pago, s.pagado_en`;
     valores = [pagado, metodo, id, idUsuario];
   } else {
@@ -218,7 +223,7 @@ export async function pagarSolicitudCliente(db, id, idUsuario, correo, metodo) {
       pagado_en=CURRENT_TIMESTAMP(6), estado='CONFIRMADA'
       FROM cliente c
       WHERE s.id_solicitud=$3 AND s.tipo='PEDIDO' AND s.id_cliente=c.id_cliente
-        AND c.id_usuario=$4
+        AND c.id_usuario=$4 AND s.estado NOT IN ('CANCELADA','RECHAZADA','ENTREGADA') AND s.estado_pago<>'PAGADO'
       RETURNING s.id_solicitud, s.estado, s.estado_pago, s.metodo_pago, s.pagado_en`;
     valores = [pagado, metodo, id, idUsuario];
   }

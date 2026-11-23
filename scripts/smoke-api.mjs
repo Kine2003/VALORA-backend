@@ -7,6 +7,7 @@ let cotizacionRecibida = false;
 let pedidoRecibido = false;
 let estadoRecibido = null;
 process.env.FRONTEND_ORIGIN = "https://kine2003.github.io/VALORA-frontend/";
+process.env.APP_ORIGIN = 'https://kine2003.github.io';
 const administrador = { id: "1", nombre: "Administrador", correo: "admin.valora.1", roles: ["ADMINISTRADOR"] };
 const servidor = crearServidor({
   salud: async () => {},
@@ -21,8 +22,8 @@ const servidor = crearServidor({
     return { id: 202, resumen: "Prueba" };
   },
   iniciarSesion: async datos => {
-    if (datos?.correo === "admin.valora.1" && datos?.password === "lticPUCE24") {
-      return { token: "token-admin", usuario: administrador };
+    if (datos?.correo === "admin.valora.1" && datos?.password === "clave-solo-prueba-API") {
+      return { token: "token-admin", refresh:'refresh-prueba', usuario: administrador };
     }
     throw new SolicitudInvalida("El usuario o la contraseña no son correctos.");
   },
@@ -43,7 +44,7 @@ const { port } = servidor.address();
 const url = `http://127.0.0.1:${port}`;
 
 async function solicitar(ruta, opciones) {
-  const respuesta = await fetch(url + ruta, opciones);
+  const respuesta = await fetch(url + ruta, {...opciones,headers:{Origin:'https://kine2003.github.io',...opciones?.headers}});
   return { respuesta, cuerpo: await respuesta.json() };
 }
 
@@ -81,13 +82,13 @@ try {
     headers: { "Content-Type": "text/plain" },
     body: "no es JSON",
   });
-  assert.equal(resultado.respuesta.status, 400);
+  assert.equal(resultado.respuesta.status, 415);
 
   const fecha = new Date(Date.now() + 86_400_000);
   const fechaTexto = fecha.toISOString().slice(0, 10);
   resultado = await solicitar("/api/v1/pedidos", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization:'Bearer token-admin' },
     body: JSON.stringify({
       contacto: {
         nombre: "Persona de Prueba", correo: "prueba@example.com", telefono: "0995883856",
@@ -102,10 +103,11 @@ try {
   resultado = await solicitar("/api/v1/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ correo: "admin.valora.1", password: "lticPUCE24" }),
+    body: JSON.stringify({ correo: "admin.valora.1", password: "clave-solo-prueba-API" }),
   });
   assert.equal(resultado.respuesta.status, 200);
-  assert.equal(resultado.cuerpo.token, "token-admin");
+  assert.equal(resultado.cuerpo.token, undefined);
+  assert.match(resultado.respuesta.headers.get('set-cookie'),/HttpOnly/);
   assert.deepEqual(resultado.cuerpo.usuario.roles, ["ADMINISTRADOR"]);
 
   resultado = await solicitar("/api/v1/auth/login", {

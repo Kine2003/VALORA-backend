@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: valora-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run frontend:build && npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/v1/salud
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_DIR
+        value: ./public
+      - key: APP_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PAGO_SIMULADO
+        value: "false"

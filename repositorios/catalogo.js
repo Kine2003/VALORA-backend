@@ -63,7 +63,8 @@ export async function crearPaquete(db, datos) {
     [datos.id, datos.servicioId, datos.nombre, datos.descripcion, datos.imagen,
      datos.imagenAlt, datos.etiqueta, datos.activo, datos.mostrarInicio, datos.ordenInicio],
   );
-  if (datos.tipoComida && datos.precioCentavos) {
+  await db.query('INSERT INTO paquete_incluye(id_paquete,orden,descripcion) VALUES($1,1,$2)',[datos.id,'Una porción del menú elegido por persona']);
+  if (datos.tipoComida) {
     const { rows: comidas } = await db.query(
       "SELECT id_tipo_comida FROM tipo_comida WHERE codigo=$1",
       [datos.tipoComida],
@@ -80,7 +81,7 @@ export async function crearPaquete(db, datos) {
         `INSERT INTO opcion_paquete
            (id_opcion,id_paquete,id_tipo_comida,codigo,tipo,nombre,precio_adicional_centavos)
          VALUES ($1,$2,$3,$4,'MENU',$5,0)`,
-        [`${datos.id}-menu`, datos.id, comidas[0].id_tipo_comida, "menu-principal", datos.nombre],
+        [`${datos.id}/${datos.tipoComida}/MENU/menu-principal`, datos.id, comidas[0].id_tipo_comida, "menu-principal", datos.nombre],
       );
     }
   }
@@ -103,15 +104,13 @@ export async function actualizarPaquete(db, id, datos) {
     [id, datos.servicioId, datos.nombre, datos.descripcion, datos.imagen,
      datos.imagenAlt, datos.etiqueta, datos.activo, datos.mostrarInicio, datos.ordenInicio],
   );
+  if(rows[0] && datos.tipoComida)await db.query(`INSERT INTO paquete_tipo_comida(id_paquete,id_tipo_comida,precio_base_centavos,min_personas,max_personas,vigente_desde)
+    SELECT $1,id_tipo_comida,$3,$4,$5,CURRENT_DATE FROM tipo_comida WHERE codigo=$2
+    ON CONFLICT(id_paquete,id_tipo_comida) DO UPDATE SET precio_base_centavos=EXCLUDED.precio_base_centavos,min_personas=EXCLUDED.min_personas,max_personas=EXCLUDED.max_personas`,[id,datos.tipoComida,datos.precioCentavos,datos.minPersonas,datos.maxPersonas]);
   return rows[0] ?? null;
 }
 
 export async function borrarPaquete(db, id) {
-  const existente = await db.query("SELECT id_paquete AS id FROM paquete WHERE id_paquete=$1", [id]);
-  if (!existente.rows[0]) return null;
-  await db.query("DELETE FROM opcion_paquete WHERE id_paquete=$1", [id]);
-  await db.query("DELETE FROM paquete_tipo_comida WHERE id_paquete=$1", [id]);
-  await db.query("DELETE FROM paquete_incluye WHERE id_paquete=$1", [id]);
-  await db.query("DELETE FROM paquete WHERE id_paquete=$1", [id]);
-  return existente.rows[0];
+  const {rows}=await db.query('UPDATE paquete SET activo=0,mostrar_inicio=0,actualizado_en=NOW() WHERE id_paquete=$1 RETURNING id_paquete AS id',[id]);
+  return rows[0]??null;
 }

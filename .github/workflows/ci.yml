@@ -27,7 +27,7 @@ jobs:
       - name: Validar código, versiones y catálogos
         run: npm run validate
       - name: Probar endpoints de la API
-        run: npm run test:api
+        run: npm test
       - name: Verificar árbol de dependencias
         run: npm ls --all
       - name: Auditar dependencias

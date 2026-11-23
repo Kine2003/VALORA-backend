@@ -1,0 +1,15 @@
+import {existsSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {execFileSync} from 'node:child_process';
+const raiz=fileURLToPath(new URL('../',import.meta.url));
+const destino=resolve(raiz,'public');
+const referencia=process.env.FRONTEND_REF||'main';
+if(!/^[a-zA-Z0-9_./-]{1,120}$/.test(referencia)||referencia.startsWith('-'))throw Error('FRONTEND_REF no válido.');
+const origen='https://github.com/Kine2003/VALORA-frontend.git';
+if(!existsSync(destino))execFileSync('git',['clone','--no-checkout','--depth','1',origen,destino],{stdio:'inherit'});
+const remoto=execFileSync('git',['-C',destino,'remote','get-url','origin'],{encoding:'utf8'}).trim();
+if(remoto!==origen)throw Error('El directorio public no corresponde al repositorio autorizado.');
+execFileSync('git',['-C',destino,'fetch','--depth','1','origin',referencia],{stdio:'inherit'});
+execFileSync('git',['-C',destino,'checkout','--detach','FETCH_HEAD'],{stdio:'inherit'});
+console.log('Frontend preparado; el servidor entrega la aplicación y la API bajo el mismo origen.');

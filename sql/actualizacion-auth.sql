@@ -1,0 +1,10 @@
+INSERT INTO rol(codigo,nombre) VALUES ('USUARIO','Usuario'),('CLIENTE','Cliente'),('CATALOGO','Catálogo'),('OPERACIONES','Operaciones'),('FINANZAS','Finanzas') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ur.id_usuario,n.id_rol FROM usuario_rol ur JOIN rol r ON r.id_rol=ur.id_rol JOIN rol n ON n.codigo='USUARIO' WHERE r.codigo='CLIENTE' ON CONFLICT DO NOTHING;
+ALTER TABLE sesion_usuario ADD COLUMN IF NOT EXISTS familia VARCHAR(64);
+ALTER TABLE sesion_usuario ADD COLUMN IF NOT EXISTS refresh_hash CHAR(64);
+ALTER TABLE sesion_usuario ADD COLUMN IF NOT EXISTS refresh_usado_en TIMESTAMP(6);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sesion_refresh ON sesion_usuario(refresh_hash) WHERE refresh_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_sesion_familia ON sesion_usuario(familia);
+CREATE TABLE IF NOT EXISTS limite_autenticacion (clave CHAR(64) PRIMARY KEY, intentos INTEGER NOT NULL DEFAULT 1, ventana TIMESTAMPTZ NOT NULL DEFAULT NOW());
+UPDATE sesion_usuario SET revocada_en=COALESCE(revocada_en,NOW()) WHERE familia IS NULL;
+CREATE INDEX IF NOT EXISTS ix_limite_ventana ON limite_autenticacion(ventana);

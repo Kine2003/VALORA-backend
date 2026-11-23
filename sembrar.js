@@ -7,7 +7,7 @@ import { validarCatalogo } from "./lib/validar-catalogo.js";
 
 const CORREO_ADMIN = (process.env.ADMIN_CORREO || "").trim().toLowerCase();
 const CLAVE_ADMIN = process.env.ADMIN_PASSWORD || "";
-if (!CORREO_ADMIN || CORREO_ADMIN.length > 254 || !/^[a-z0-9][a-z0-9._-]*$/iu.test(CORREO_ADMIN)) {
+if (!CORREO_ADMIN || CORREO_ADMIN.length > 254 || !(/^[a-z0-9][a-z0-9._-]*$/iu.test(CORREO_ADMIN)||/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(CORREO_ADMIN))) {
   throw new Error("Configure ADMIN_CORREO con un usuario o correo válido antes de ejecutar db:seed.");
 }
 if (CLAVE_ADMIN.length < 8 || CLAVE_ADMIN.length > 128) {
@@ -40,7 +40,7 @@ try {
     for (const [codigo, nombre] of [["ADMINISTRADOR", "Administrador"], ["CLIENTE", "Cliente"]]) {
       await insertar(db, "rol", { codigo, nombre });
     }
-    // Cuenta de administrador del panel. La contraseña se guarda cifrada.
+    // Cuenta del panel; se guarda una derivación de la contraseña con sal aleatoria.
     const { rows: roles } = await db.query("SELECT codigo, id_rol FROM rol");
     await insertar(db, "usuario", {
       nombre: "Administrador Válora",

@@ -1,0 +1,15 @@
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('GERENTE_NEGOCIOS','Gerente de negocios','Supervisión del negocio') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('JEFE_OPERACIONES','Jefe de operaciones zonal','Supervisión de la operación') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('HSE','HSE','Calidad y vencimientos') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('COMPRAS_LOGISTICA','Compras y logística','Proveedores y existencias') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('VENTAS_MARKETING','Ventas y marketing','Catálogo, clientes y solicitudes') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('CONTADORA','Contadora','Facturación') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('CHEF_SUPERVISOR','Chef supervisor','Platos, recetas y producción') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('NUTRICIONISTA','Nutricionista','Recetas y alérgenos') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('COCINERO','Cocinero','Producción diaria') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('PASTELERO','Pastelero','Producción de pastelería') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('AYUDANTE_BODEGA','Ayudante de bodega','Recetas y existencias') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('AYUDANTE_COCINA','Ayudante de cocina','Recetas y existencias') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('POSILLERO','Posillero','Trabajo del día') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('LIMPIEZA','Limpieza','Trabajo del día') ON CONFLICT(codigo) DO NOTHING;
+INSERT INTO rol(codigo,nombre,descripcion) VALUES('CONDUCTOR','Conductor','Entregas a domicilio') ON CONFLICT(codigo) DO NOTHING;

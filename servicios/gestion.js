@@ -1,3 +1,4 @@
+import { accesoTablaEquipo, esCargo, ROLES_EQUIPO } from '../lib/equipo.js';
 import { transaccion } from '../datos/postgres.js';
 import { SolicitudInvalida } from '../modelos/solicitud-invalida.js';
 import { hashearClave } from '../lib/passwords.js';
@@ -57,8 +58,11 @@ export function permiteSeccion(usuario,seccion) {return usuario?.roles?.includes
 function configuracion(tabla,usuario) {
   if (!Object.hasOwn(definiciones,tabla)) throw error('Tabla no disponible.',404);
   const [seccion,campos,clave]=definiciones[tabla];
-  if (!permiteSeccion(usuario,seccion)) throw error('No tienes permiso para esta sección.',403);
-  return {seccion,campos:campos.split(' ').filter(Boolean),claves:clave.split(' ')};
+  const cargo=esCargo(usuario)&&!permiteSeccion(usuario,seccion);
+  const acceso=cargo?accesoTablaEquipo(usuario,tabla):null;
+  if (cargo && acceso===null) throw error('No tienes permiso para esta tabla.',403);
+  if (!cargo && !permiteSeccion(usuario,seccion)) throw error('No tienes permiso para esta sección.',403);
+  return {seccion,campos:cargo?acceso:campos.split(' ').filter(Boolean),claves:clave.split(' '),cargo};
 }
 async function esquema(pool) {
   if (!cache.has(pool)) cache.set(pool,(async()=>{
@@ -70,7 +74,7 @@ async function esquema(pool) {
 }
 async function camposTabla(pool,tabla,config) {
   const {rows}=await esquema(pool);
-  return rows.filter(r=>r.table_name===tabla && !['password_hash','token_hash','refresh_hash','csrf_hash'].includes(r.column_name)).map(r=>{
+  return rows.filter(r=>r.table_name===tabla && (!config.cargo || [...config.claves,...config.campos,...({insumo:['nombre','codigo','unidad_base','activo','requiere_vencimiento','alergenos_declarados'],opcion_paquete:['nombre','tipo','activo'],lote_insumo:['codigo_lote','id_insumo','fecha_ingreso','fecha_vencimiento','bloqueado'],solicitud:['estado','fecha_evento','hora_evento','personas','entrega']}[tabla]||[])].includes(r.column_name)) && !['password_hash','token_hash','refresh_hash','csrf_hash'].includes(r.column_name)).map(r=>{
     const opciones=opcionesPermitidas[tabla+'.'+r.column_name]||[];
     return {nombre:r.column_name,tipo:r.data_type,longitud:r.character_maximum_length,escala:r.numeric_scale,
       requerido:r.is_nullable==='NO' && !r.column_default && r.is_identity!=='YES',nullable:r.is_nullable==='YES',
@@ -80,18 +84,19 @@ async function camposTabla(pool,tabla,config) {
 export async function metadatosGestion(pool,usuario) {
   const resultado=[];
   for(const [id,nombre] of Object.entries(secciones)) {
-    if(!permiteSeccion(usuario,id)) continue;
+    if(!permiteSeccion(usuario,id) && !Object.keys(definiciones).some(t=>definiciones[t][0]===id && accesoTablaEquipo(usuario,t)!==null)) continue;
     const tablas=[];
     for(const tabla of Object.keys(definiciones).filter(t=>definiciones[t][0]===id)) {
+      if(!permiteSeccion(usuario,id)&&accesoTablaEquipo(usuario,tabla)===null)continue;
       const config=configuracion(tabla,usuario), campos=await camposTabla(pool,tabla,config);
-      tablas.push({nombre:tabla,etiqueta:tabla.replaceAll('_',' '),claves:config.claves,campos,
-        crear:config.campos.length>0&&!soloEditar.has(tabla),editar:config.campos.length>0,
-        eliminar:config.campos.includes('activo')||['usuario_rol','servicio_incluye','paquete_incluye','servicio_dia','proveedor_insumo'].includes(tabla),
+      tablas.push({nombre:tabla,cambiarEstado:tabla==='solicitud'&&usuario.roles.some(r=>['VENTAS_MARKETING','JEFE_OPERACIONES','ADMINISTRADOR','OPERACIONES'].includes(r)),etiqueta:tabla.replaceAll('_',' '),claves:config.claves,campos,
+        crear:config.campos.length>0&&!soloEditar.has(tabla)&&(!config.cargo||['proveedor','proveedor_insumo','insumo','cliente','factura','detalle_factura'].includes(tabla)),editar:config.campos.length>0,
+        eliminar:!config.cargo&&(config.campos.includes('activo')||['usuario_rol','servicio_incluye','paquete_incluye','servicio_dia','proveedor_insumo'].includes(tabla)),
         motivo:config.campos.length?'':'Gestiona estos datos desde las operaciones de recetas, compras, producción o documentos.'});
     }
     resultado.push({id,nombre,tablas});
   }
-  return {secciones:resultado};
+  return {secciones:resultado,...(usuario.roles.includes('ADMINISTRADOR')?{rolesDisponibles:[...['USUARIO','CATALOGO','OPERACIONES','FINANZAS','ADMINISTRADOR'].map(codigo=>({codigo,nombre:codigo.replaceAll('_',' ')})),...ROLES_EQUIPO.map(({codigo,nombre})=>({codigo,nombre}))]}:{})};
 }
 export async function listarTabla(pool,tabla,parametros,usuario) {
   const config=configuracion(tabla,usuario), campos=await camposTabla(pool,tabla,config);
@@ -146,6 +151,7 @@ export async function modificarTabla(pool,tabla,metodo,datos,usuario) {
   const config=configuracion(tabla,usuario), campos=await camposTabla(pool,tabla,config);
   if(!objeto(datos)||!['POST','PATCH','DELETE'].includes(metodo))throw error('Operación no válida.');
   const crear=metodo==='POST',borrar=metodo==='DELETE';
+  if(config.cargo && (borrar || (crear&&!['proveedor','proveedor_insumo','insumo','cliente','factura','detalle_factura'].includes(tabla))))throw error('No tienes permiso para esta operación.',403);
   if(!config.campos.length||(crear&&soloEditar.has(tabla)))throw error('Usa la operación de negocio de esta sección.',403);
   if(borrar&&!config.campos.includes('activo')&&!['usuario_rol','servicio_incluye','paquete_incluye','servicio_dia','proveedor_insumo'].includes(tabla))throw error('Este registro se conserva por trazabilidad.',409);
   const entrada=borrar?{}:datos.valores;
@@ -202,7 +208,7 @@ export async function crearCuentaAdmin(pool,datos,usuario) {
   const nombre=validarValor({nombre:'nombre',tipo:'text',longitud:120,requerido:true},datos.nombre);
   const correo=validarValor({nombre:'correo',tipo:'text',longitud:254,requerido:true},datos.correo);
   const roles=datos.roles;
-  if(!Array.isArray(roles)||!roles.length||roles.length>5||roles.some(r=>!['USUARIO','ADMINISTRADOR','CATALOGO','OPERACIONES','FINANZAS'].includes(r)))throw error('Selecciona roles válidos.');
+  if(!Array.isArray(roles)||!roles.length||roles.length>5||roles.some(r=>!['USUARIO','ADMINISTRADOR','CATALOGO','OPERACIONES','FINANZAS',...ROLES_EQUIPO.map(x=>x.codigo)].includes(r)))throw error('Selecciona roles válidos.');
   const hash=await hashearClave(datos.password);
   return transaccion(pool,async db=>{
     const {rows:[fila]}=await db.query('INSERT INTO usuario(nombre,correo,password_hash) VALUES($1,$2,$3) RETURNING id_usuario,nombre,correo',[nombre,correo,hash]);
@@ -218,7 +224,7 @@ export async function revocarSesionAdmin(pool,id,usuario) {
 }
 
 export async function cambiarFactura(pool,id,accion,usuario) {
-  if(!permiteSeccion(usuario,'finanzas'))throw error('No tienes permiso de facturación.',403);
+  if(!permiteSeccion(usuario,'finanzas')&&!usuario?.roles?.includes('CONTADORA'))throw error('No tienes permiso de facturación.',403);
   if(!/^[1-9]\d{0,15}$/.test(String(id))||!['emitir','anular'].includes(accion))throw error('Operación de factura no válida.');
   return transaccion(pool,async db=>{
     await db.query('SELECT pg_advisory_xact_lock(892032)');

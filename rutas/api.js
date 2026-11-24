@@ -1,3 +1,4 @@
+import { esCargo, permiteEquipo } from '../lib/equipo.js';
 import { resolverVersion } from "../middleware/version-api.js";
 import { json, leerJson } from "../middleware/json.js";
 import { leerToken } from "../lib/autorizacion.js";
@@ -17,6 +18,10 @@ import {
 } from "../controladores/admin.js";
 
 const rutas = [
+ [/^\/equipo\/solicitudes\/(\d+)$/u,{metodo:'PATCH',autenticado:true,ventas:true,ejecutar:actualizarSolicitud}],
+ ['/equipo/panel',{metodo:'GET',autenticado:true,cargo:true,ejecutar:(api,_d,_p,u)=>api.panelEquipo(u)}],
+ [/^\/equipo\/entregas\/(\d+)$/u,{metodo:'PATCH',autenticado:true,capacidad:'entregas',ejecutar:(api,d,_p,u,k)=>api.confirmarEntrega(k[0],d,u)}],
+ ...['platos','recetas','compras','produccion','planificar'].map((recurso,i)=>['/equipo/'+recurso,{metodo:'POST',autenticado:true,capacidad:recurso,ejecutar:(api,d,_p,u)=>api[['crearPlato','guardarReceta','registrarCompra','registrarProduccion','planificarCocina'][i]](d,u)}]),
   ["/salud", { metodo: "GET", estado: 200, ejecutar: async api => {
     await api.salud();
     return { postgres: "conectado" };
@@ -33,7 +38,7 @@ const rutas = [
   ["/cuenta/solicitudes", { metodo: "GET", estado: 200, autenticado: true, ejecutar: consultarCuenta }],
   ["/admin/resumen", { metodo: "GET", estado: 200, equipo: true, area:'pedidos', ejecutar: consultarResumen }],
   ["/admin/solicitudes", { metodo: "GET", estado: 200, equipo: true, area:'pedidos', ejecutar: consultarSolicitudes }],
-  [/^\/admin\/solicitudes\/(\d+)$/u, { metodo: "PATCH", estado: 200, equipo:true, area:'operaciones', ejecutar: actualizarSolicitud }],
+  [/^\/admin\/solicitudes\/(\d+)$/u, { metodo: "PATCH", estado: 200, equipo:true, area:'operaciones', ventas:true, ejecutar: actualizarSolicitud }],
   ["/admin/clientes", { metodo: "GET", estado: 200, soloAdmin: true, ejecutar: consultarClientes }],
   ["/admin/catalogo", { metodo: "GET", estado: 200, equipo: true, area:'cocina', ejecutar: consultarCatalogoAdmin }],
   ["/admin/catalogo", { metodo: "POST", estado: 201, equipo: true, area:'cocina', ejecutar: crearProducto }],
@@ -90,16 +95,18 @@ export async function atenderApi(peticion, respuesta, ruta, api) {
       json(respuesta, 403, { error: "Esta sección requiere una cuenta de administrador." });
       return true;
     }
-    if(elegida.definicion.equipo && !usuario.roles.some(r=>['ADMINISTRADOR','CATALOGO','OPERACIONES','FINANZAS'].includes(r))) {
+    if(elegida.definicion.equipo && !(elegida.definicion.ventas&&usuario.roles.some(r=>['VENTAS_MARKETING','JEFE_OPERACIONES'].includes(r))) && !(esCargo(usuario)&&(!elegida.definicion.area && (/^\/admin\/(gestion|tablas\/)/.test(version.recurso)||(/^\/admin\/facturas\//.test(version.recurso)&&permiteEquipo(usuario,'finanzas'))))) && !usuario.roles.some(r=>['ADMINISTRADOR','CATALOGO','OPERACIONES','FINANZAS'].includes(r))) {
       json(respuesta,403,{error:'Esta sección requiere permisos de gestión.'});return true;
     }
     const area=elegida.definicion.area;
     const permisosArea={cocina:['CATALOGO','OPERACIONES'],inventario:['OPERACIONES'],operaciones:['OPERACIONES'],pedidos:['OPERACIONES','FINANZAS']};
-    if(area && !usuario.roles.includes('ADMINISTRADOR') && !permisosArea[area]?.some(r=>usuario.roles.includes(r))) {
+    if(area && !(elegida.definicion.ventas&&usuario.roles.some(r=>['VENTAS_MARKETING','JEFE_OPERACIONES'].includes(r))) && !usuario.roles.includes('ADMINISTRADOR') && !permisosArea[area]?.some(r=>usuario.roles.includes(r))) {
       json(respuesta,403,{error:'No tienes permiso para esta operación.'});return true;
     }
   }
 
+  if(elegida.definicion.ventas&&!usuario.roles.some(r=>['VENTAS_MARKETING','JEFE_OPERACIONES','ADMINISTRADOR','OPERACIONES'].includes(r))){json(respuesta,403,{error:'No tienes permiso para cambiar solicitudes.'});return true;}
+  if(elegida.definicion.cargo && !esCargo(usuario)&&!usuario?.roles?.includes('ADMINISTRADOR') || elegida.definicion.capacidad && !permiteEquipo(usuario,elegida.definicion.capacidad)) {json(respuesta,403,{error:'No tienes permiso para esta operación.'});return true;}
   const conCuerpo = ["POST","PATCH","DELETE"].includes(peticion.method);
   const datos = conCuerpo ? await leerJson(peticion) : undefined;
   const cuerpo = await elegida.definicion.ejecutar(api, datos, peticion, usuario, elegida.parametros,respuesta);

@@ -44,15 +44,15 @@ async function auditada(pool, tipo, datos, usuario, accion) {
 }
 
 export async function consultarCocina(pool) {
-  const ingredientes = (await pool.query(`SELECT i.id_insumo::text AS id,i.nombre,i.unidad_base AS unidad,i.activo, COALESCE((SELECT SUM(${saldo}) FROM lote_insumo l WHERE l.id_insumo=i.id_insumo AND ${vigentes}),0)::text AS stock FROM insumo i ORDER BY i.nombre`)).rows.map(i => ({ ...i, activo: i.activo === 1 }));
+  const ingredientes = (await pool.query(`SELECT i.id_insumo::text AS id,i.nombre,i.alergenos_declarados AS alergenos,i.unidad_base AS unidad,i.activo, COALESCE((SELECT SUM(${saldo}) FROM lote_insumo l WHERE l.id_insumo=i.id_insumo AND ${vigentes}),0)::text AS stock FROM insumo i ORDER BY i.nombre`)).rows.map(i => ({ ...i, activo: i.activo === 1 }));
   const componentes = (await pool.query('SELECT id_opcion,id_insumo::text,cantidad_por_persona::text AS cantidad FROM composicion_opcion')).rows;
-  const recetas = (await pool.query('SELECT x.id_opcion,x.nombre,x.activo,x.composicion_lista,x.tipo,p.nombre AS paquete,t.nombre AS "tipoComida" FROM opcion_paquete x JOIN paquete p USING(id_paquete) JOIN tipo_comida t USING(id_tipo_comida) ORDER BY p.nombre,t.id_tipo_comida,x.nombre')).rows.map(r => {
+  const recetas = (await pool.query('SELECT x.id_opcion,x.nombre,x.alergenos_declarados AS alergenos,x.activo,x.composicion_lista,x.tipo,p.nombre AS paquete,t.nombre AS "tipoComida" FROM opcion_paquete x JOIN paquete p USING(id_paquete) JOIN tipo_comida t USING(id_tipo_comida) ORDER BY p.nombre,t.id_tipo_comida,x.nombre')).rows.map(r => {
     const componentesReceta = componentes.filter(c => c.id_opcion === r.id_opcion).map(c => {
       const ingrediente = ingredientes.find(i => i.id === c.id_insumo);
       return { idInsumo: c.id_insumo, nombre: ingrediente.nombre, unidad: ingrediente.unidad, stock: ingrediente.stock, activo: ingrediente.activo, cantidad: c.cantidad };
     });
     const disponibles = capacidad(componentesReceta, r.composicion_lista === 1 && r.activo === 1);
-    return { idOpcion: r.id_opcion, nombre: r.nombre, paquete:r.paquete,tipoComida:r.tipoComida,tipo:r.tipo, activo: r.activo === 1, ingredientes: componentesReceta, capacidad: disponibles, listo: disponibles !== null && BigInt(disponibles) > 0n };
+    return { idOpcion: r.id_opcion, nombre: r.nombre, alergenos:r.alergenos, paquete:r.paquete,tipoComida:r.tipoComida,tipo:r.tipo, activo: r.activo === 1, ingredientes: componentesReceta, capacidad: disponibles, listo: disponibles !== null && BigInt(disponibles) > 0n };
   });
   const proveedores = (await pool.query('SELECT id_proveedor::text AS id,razon_social AS nombre FROM proveedor WHERE activo=1 ORDER BY razon_social')).rows;
   const paquetes=(await pool.query('SELECT id_paquete AS id,nombre FROM paquete WHERE activo=1 ORDER BY nombre')).rows;

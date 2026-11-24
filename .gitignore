@@ -4,3 +4,5 @@ node_modules/
 !.env.example
 public/
 backups/
+users*.txt
+accesos-privados/

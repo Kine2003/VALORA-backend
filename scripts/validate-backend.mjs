@@ -16,6 +16,7 @@ const requiredFiles = [
   "sql/actualizacion-auth.sql",
   "sql/actualizacion-gestion.sql",
   "sql/actualizacion-operacion.sql",
+  "sql/actualizacion-equipo.sql",
   "package.json",
   "package-lock.json",
   "data/productos.json",

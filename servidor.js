@@ -1,3 +1,4 @@
+import { panelEquipo, confirmarEntrega } from './servicios/equipo.js';
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { comprobarConexion, conectar } from "./datos/postgres.js";
@@ -71,6 +72,7 @@ export function crearServidor(serviciosApi) {
 export function serviciosDeAplicacion(pool) {
   const salud = () => comprobarConexion(pool);
   return {
+      panelEquipo:u=>panelEquipo(pool,u), confirmarEntrega:(id,d,u)=>confirmarEntrega(pool,id,d,u),
       salud, servicios: () => servicios(pool), productos: () => productos(pool),
       cotizar: (datos, usuarioId) => cotizar(pool, datos, usuarioId),
       guardarPedido: (contacto, lineas, usuarioId) => guardarPedido(pool, contacto, lineas, usuarioId),

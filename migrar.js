@@ -37,7 +37,7 @@ try {
   }
   const vistas = await readFile(new URL("./sql/vistas-postgres.sql", import.meta.url), "utf8");
   await conexion.query(vistas);
-  for (const archivo of ['actualizacion-gestion.sql', 'actualizacion-auth.sql', 'actualizacion-operacion.sql']) {
+  for (const archivo of ['actualizacion-gestion.sql', 'actualizacion-auth.sql', 'actualizacion-operacion.sql', 'actualizacion-equipo.sql']) {
     await conexion.query(await readFile(new URL('./sql/' + archivo, import.meta.url), 'utf8'));
   }
   await conexion.query('COMMIT');

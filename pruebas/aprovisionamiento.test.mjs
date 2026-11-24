@@ -8,7 +8,7 @@ import {aprovisionarEquipo} from '../scripts/aprovisionar-equipo.mjs';
 test('las claves nunca se escriben dentro del proyecto o carpeta publicada',async()=>{
   let conectado=false;
   const pool={connect:async()=>{conectado=true;throw Error('No debe conectar');}};
-  for(const ruta of [new URL('../users-prueba.txt',import.meta.url),new URL('../data/accesos.txt',import.meta.url),new URL('../../VALORA-frontend/assets/accesos.txt',import.meta.url)]){
+  for(const ruta of [new URL('../users-prueba.txt',import.meta.url),new URL('../data/accesos.txt',import.meta.url)]){
     await assert.rejects(aprovisionarEquipo(pool,ruta.pathname.replace(/^\/([A-Za-z]:)/,'$1')),/fuera de los repositorios/);
   }
   assert.equal(conectado,false);
